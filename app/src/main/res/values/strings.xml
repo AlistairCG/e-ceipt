@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
 
     <!--<string name="app_name">My Application</string>-->
@@ -18,6 +19,51 @@
     <string name="reg_verify">Create Your Account</string>
     <string name="pass_email">Send Reset Link</string>
     <string name="pass_title">Reset Password</string>
+    <!-- Google Vision OCR strings -->
+    <string name="ok">OK</string>
+    <string name="permission_camera_rationale">Access to the camera is needed for detection</string>
+    <string name="no_camera_permission">This application cannot run because it does not have the camera permission.  The application will now exit.</string>
+    <string name="low_storage_error">Ocr dependencies cannot be downloaded due to low device storage</string>
+    <string name="title_activity_main">Ocr Detector Sample</string>
+    <string name="ocr_header">Click &quot;Detect Text&quot; to detect text</string>
+    <string name="read_text">Detect Text</string>
+    <string name="auto_focus">Auto Focus</string>
+    <string name="use_flash">Use Flash</string>
+    <string name="ocr_success">Text read successfully</string>
+    <string name="ocr_failure">No text captured</string>
+    <string name="ocr_error">"Error reading text: %1$s"</string>
     <string name="reg_verifySuper">You must verify your email to continue!</string>
+
+
+
+    <!-- Add receipt option layout -->
+    <string name="add_receipt_option_add_form">Add receipt form</string>
+    <string name="add_receipt_option_scan_qr">Add receipt by QR code</string>
+    <string name="add_receipt_option_scan_real_receipt">Scan real receipt</string>
+
+    <!-- Add receipt form layout -->
+    <string name="company_name">Company:</string>
+    <string name="receipt_date">Receipt date:</string>
+    <string name="receipt_category">Category:</string>
+    <string name="item_list_label">Item list</string>
+    <string name="item_name_label">Item name</string>
+    <string name="item_cost_label">Item cost ($)</string>
+    <string name="total_cost_label">Total cost($):</string>
+
+    <string name="add_item_btn">Add</string>
+    <string name="total_cost_input_hint">100.00</string>
+    <string name="item_price_input_hint">Item price</string>
+    <string name="item_name_input_hint">Item name</string>
+    <string name="receipt_date_input_hint">Enter receipt creation date</string>
+    <string name="business_name_input_hint">Please enter receipt's business name</string>
+
+
+    <!-- home layout -->
+    <string name="company_name_label_in_listview">Company</string>
+
+
+    <string name="receipt_cost_label_in_listview">Cost($)</string>
+    <string name="date_label_in_listview">Date</string>
+    <string name="analyze_btn">Analyze</string>
 
 </resources>

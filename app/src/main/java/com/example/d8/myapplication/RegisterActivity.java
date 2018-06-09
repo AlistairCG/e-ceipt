@@ -62,6 +62,8 @@ public class RegisterActivity extends AppCompatActivity {
 
                                     authUser a = new authUser();
                                     a.createUser();
+                                    a.updateProfile(a.getName());
+                                    a.contactSql_reg(RegisterActivity.this);
 
 
                                     Intent goToMain = new Intent(RegisterActivity.this, MainActivity.class);
