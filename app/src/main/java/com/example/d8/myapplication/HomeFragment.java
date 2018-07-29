@@ -3,6 +3,7 @@ package com.example.d8.myapplication;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
+import android.icu.text.IDNA;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -32,6 +33,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 
 
 //The Home activity is implemented by the Home fragment, though to be honest this seems like redundant code.
@@ -46,10 +48,21 @@ public class HomeFragment extends Fragment implements View.OnClickListener {
     private String mParam1;
     private String mParam2;
 
+    String USERID = Information.authUser.getUserId();
+    String USERRECEIPTFILENAME = USERID+Information.RECEIPTSLOCALFILENAME;
+    String USERNAME = Information.authUser.getName();
+
     View fragmentView=null;
     Button btn_add;
     Button btn_rec;
     ListView listView=null;
+    TextView receiptsTotalCost;
+
+
+    private String daysSpinnerSelect = "All receipts";
+    private String cateSpinnerSelect = "All receipts";
+    ArrayList<Receipt> receiptsSelect = new ArrayList<Receipt>();
+
 
     private OnFragmentInteractionListener mListener;
 
@@ -66,7 +79,7 @@ public class HomeFragment extends Fragment implements View.OnClickListener {
                 startActivity(goToAdd);
                 break;
             case R.id.analyze_btn:
-                Intent goToRec = new Intent(getActivity(), AddReceiptFormActivity.class);
+                Intent goToRec = new Intent(getActivity(), AnalyzeActivity.class);
                 startActivity(goToRec);
             default:
                 break;
@@ -87,12 +100,17 @@ public class HomeFragment extends Fragment implements View.OnClickListener {
     @Override
     public void onCreate(Bundle savedInstanceState) {
 
-
         super.onCreate(savedInstanceState);
+
+
+
         if (getArguments() != null) {
             mParam1 = getArguments().getString(ARG_PARAM1);
             mParam2 = getArguments().getString(ARG_PARAM2);
         }
+
+        getActivity().setTitle("Home");
+        DataController.SyncronizeData("http://myvmlab.senecacollege.ca:6207/getUserReceipts.php", getContext());
 
     }
 
@@ -104,7 +122,7 @@ public class HomeFragment extends Fragment implements View.OnClickListener {
         View v=inflater.inflate(R.layout.fragment_home, container, false);
         fragmentView=v;
 
-        listView = (ListView)v.findViewById(R.id.receipts_list_view);
+//        listView = (ListView)v.findViewById(R.id.receipts_list_view);
 
         //Adds OnClick Listeners to the lower buttons
         btn_add = (Button) v.findViewById(R.id.add_btn);
@@ -113,17 +131,74 @@ public class HomeFragment extends Fragment implements View.OnClickListener {
         btn_rec.setOnClickListener(this);
 
         //getData("http://myvmlab.senecacollege.ca:6207/getUserReceipts.php");
-        getJSON("http://myvmlab.senecacollege.ca:6207/getUserReceipts.php");
+        //getJSON("http://myvmlab.senecacollege.ca:6207/getUserReceipts.php");
+        //DataController.SyncronizeData("http://myvmlab.senecacollege.ca:6207/getUserReceipts.php", this);
+
         initCustomSpinner();
+
+//        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+//            @Override
+//            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+//                //Toast.makeText(getActivity().getBaseContext(),""+position, Toast.LENGTH_LONG).show();
+//                Intent intent = new Intent(getActivity(),ReceiptDetailActivity.class);
+//                intent.putExtra("RECEIPTINDEX", Integer.toString(position));
+//                startActivity(intent);
+//            }
+//        });
+
+
+        listView = (ListView)v.findViewById(R.id.receipts_list_view);
+        receiptsTotalCost = (TextView)v.findViewById(R.id.total_cost) ;
+
+        //DataController.SyncronizeData("http://myvmlab.senecacollege.ca:6207/getUserReceipts.php", this);
+
+        try{
+            String json = DataController.readJsonFile(USERRECEIPTFILENAME, v.getContext());
+            if(json.equals("null")){
+                DataController.storeJsonToLocal("[]",USERRECEIPTFILENAME,getActivity());
+            }
+            Log.i("JSONHOME", json);
+
+            if(!Information.receipts.isEmpty()){
+                Information.receipts.clear();
+            }
+            DataController.loadReceiptsObj(json);
+
+        }catch(JSONException e){
+            Log.e("JSONERROR", e.toString());
+        }
 
         listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                Toast.makeText(getActivity().getBaseContext(),""+position, Toast.LENGTH_LONG).show();
+                //Toast.makeText(getBaseContext(),""+position, Toast.LENGTH_LONG).show();
+                Intent intent = new Intent(v.getContext(),ReceiptDetailActivity.class);
+                intent.putExtra("RECEIPTINDEX", Integer.toString(position));
+                startActivity(intent);
             }
         });
 
+        //Initialize categories to user
+        Information.categories.clear();
+        Information.categories.add("All categories");
 
+        for(int i=0; i<Information.receipts.size(); i++){
+            String cateTemp = Information.receipts.get(i).getCategory();
+            Log.i("CATETEST", cateTemp);
+            for(int j=0; j<Information.categories.size(); j++){
+                if(Information.categories.get(j).equals(cateTemp)){
+                    break;
+                }
+                if(j==Information.categories.size()-1){
+                    Information.categories.add(cateTemp);
+                }
+            }
+        }
+
+        initCustomSpinner();
+
+        //test
+        //DataController.deleteLocalFile(getActivity());
 
         return v;
     }
@@ -178,7 +253,44 @@ public class HomeFragment extends Fragment implements View.OnClickListener {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
                 String item = parent.getItemAtPosition(position).toString();
-                //Toast.makeText(parent.getContext(), "Android Custom Spinner Example Output..." + item, Toast.LENGTH_LONG).show();
+                daysSpinnerSelect = item;
+
+                Log.i("ITEMSAaaaaa", item);
+                double totalCost = 0.0;
+
+                ArrayList<Receipt> receiptsSelect = new ArrayList<Receipt>();
+                receiptsSelect = loadReceiptObjToListviewByDaysAndCate(Information.receipts,daysSpinnerSelect,cateSpinnerSelect);
+                loadReceiptObjToListView(receiptsSelect);
+//                if(item.equals("All receipts")){
+//                    loadReceiptObjToListView(Information.receipts);
+//
+//                    for(Receipt receipt:Information.receipts){
+//                        totalCost += receipt.getTotalCost();
+//                    }
+//                }else{
+//                    String daysNumString = item.replaceAll("\\D+","");
+//
+//                    Integer daysNum = Integer.parseInt(daysNumString);
+//
+//                    //Toast.makeText(parent.getContext(), "Android Custom Spinner Example Output..." + daysNumString, Toast.LENGTH_LONG).show();
+//                    ArrayList<Receipt> receipts = DataController.getReceiptsInDays(daysNum);
+//
+//                    loadReceiptObjToListView(receipts);
+//
+//                    for(Receipt receipt:receipts){
+//                        totalCost += receipt.getTotalCost();
+//                    }
+//                    Log.i("TOTALCOST22222", Double.toString(totalCost));
+//                }
+
+                for(Receipt receipt:receiptsSelect){
+                    totalCost += receipt.getTotalCost();
+                }
+
+                Log.i("TOTALCOST22222", String.format("%.2f", totalCost));
+                receiptsTotalCost.setText(String.format("%.2f", totalCost));
+
+
             }
 
 
@@ -191,7 +303,8 @@ public class HomeFragment extends Fragment implements View.OnClickListener {
 
         //Set spinner for category select
         Spinner spinnerCate = (Spinner) fragmentView.findViewById(R.id.spinner_category_select);
-        ArrayList<String> resourceCate = new ArrayList<String>(Arrays.asList(getResources().getStringArray(R.array.home_spinner_category)));
+        //ArrayList<String> resourceCate = new ArrayList<String>(Arrays.asList(getResources().getStringArray(R.array.home_spinner_category)));
+        ArrayList<String> resourceCate = Information.categories;
         HomeFragment.CustomSpinnerAdapter customSpinnerAdapterCate=new HomeFragment.CustomSpinnerAdapter(getContext(),resourceCate);
         spinnerCate.setAdapter(customSpinnerAdapterCate);
 
@@ -199,7 +312,19 @@ public class HomeFragment extends Fragment implements View.OnClickListener {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
                 String item = parent.getItemAtPosition(position).toString();
-                //Toast.makeText(parent.getContext(), "Android Custom Spinner Example Output..." + item, Toast.LENGTH_LONG).show();
+                cateSpinnerSelect = item;
+
+                double totalCost = 0.0;
+                ArrayList<Receipt> receiptsSelect = new ArrayList<Receipt>();
+                receiptsSelect = loadReceiptObjToListviewByDaysAndCate(Information.receipts,daysSpinnerSelect,cateSpinnerSelect);
+                loadReceiptObjToListView(receiptsSelect);
+                for(Receipt receipt:receiptsSelect){
+                    totalCost += receipt.getTotalCost();
+                }
+
+                Log.i("TOTALCOST22222", String.format("%.2f", totalCost));
+                receiptsTotalCost.setText(String.format("%.2f", totalCost));
+
             }
 
             @Override
@@ -266,105 +391,37 @@ public class HomeFragment extends Fragment implements View.OnClickListener {
         }
     }
 
-
-    //code from "https://www.simplifiedcoding.net/android-json-parsing-tutorial/"
-    //this method is actually fetching the json string
-    private void getJSON(final String urlWebService) {
-        /*
-         * As fetching the json string is a network operation
-         * And we cannot perform a network operation in main thread
-         * so we need an AsyncTask
-         * The constrains defined here are
-         * Void -> We are not passing anything
-         * Void -> Nothing at progress update as well
-         * String -> After completion it should return a string and it will be the json string
-         * */
-        class GetJSON extends AsyncTask<Void, Void, String> {
-
-            //this method will be called before execution
-            //you can display a progress bar or something
-            //so that user can understand that he should wait
-            //as network operation may take some time
-            @Override
-            protected void onPreExecute() {
-                super.onPreExecute();
-            }
-
-            //this method will be called after execution
-            //so here we are displaying a toast with the json string
-            @Override
-            protected void onPostExecute(String s) {
-                super.onPostExecute(s);
-
-
-                try{
-                    loadIntoListView(s);
-                }catch(Exception e){
-
-                }
-
-                //Toast.makeText(getApplicationContext(), s, Toast.LENGTH_SHORT).show();
-                //Toast.makeText(getApplicationContext(), "dhfjshjfs", Toast.LENGTH_SHORT).show();
-                //Log.i("Json:" , s.toString());
-            }
-
-            //in this method we are fetching the json string
-            @Override
-            protected String doInBackground(Void... voids) {
-
-                try {
-                    //creating a URL
-                    Log.i("HHHHHHHH","wwwww");
-                    URL url = new URL(urlWebService);
-
-
-                    //Opening the URL using HttpURLConnection
-                    HttpURLConnection con = (HttpURLConnection) url.openConnection();
-
-                    con.setRequestMethod("GET");
-                    con.connect();
-                    //StringBuilder object to read the string from the service
-                    StringBuilder sb = new StringBuilder();
-
-                    //We will use a buffered reader to read the string from service
-                    BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(con.getInputStream()));
-                    Log.i("HHHHHHHH","aaa");
-                    //A simple string to read values from each line
-                    String json;
-
-                    //reading until we don't find null
-                    while ((json = bufferedReader.readLine()) != null) {
-                        Log.d("HHHHHHHH", json);
-                        //appending it to string builder
-                        sb.append(json + "\n");
-                    }
-
-                    //finally returning the read string
-                    return sb.toString().trim();
-                } catch (Exception e) {
-                    Log.i("FAIL222",e.toString());
-                    return null;
-                }
-
-            }
+    //Load the receipts data to listview(from object to listview)
+    void loadReceiptObjToListView(ArrayList<Receipt> _receipts){
+        if(!_receipts.isEmpty()){
+            ReceiptListviewAdapter adapter = new ReceiptListviewAdapter(getActivity(),_receipts);
+            listView.setAdapter(adapter);
+        }else{
+            String[] emptyString = {};
+            ArrayAdapter<String> arrayAdapterEmpty = new ArrayAdapter<String>(getActivity(), android.R.layout.simple_list_item_1, emptyString);
+            listView.setAdapter(arrayAdapterEmpty);
+            Log.i("NORECEIPT!","true");
         }
-
-
-        //creating asynctask object and executing it
-        GetJSON getJSON = new GetJSON();
-        getJSON.execute();
     }
 
 
-    private void loadIntoListView(String json) throws JSONException {
-        JSONArray jsonArray = new JSONArray(json);
-        String[] receipts = new String[jsonArray.length()];
-        for (int i = 0; i < jsonArray.length(); i++) {
-            JSONObject obj = jsonArray.getJSONObject(i);
-            //receipts[i] = obj.getString("receiptID")+"   "+obj.getString("date")+"  "+obj.getString("totalCost");
-            receipts[i] = String.format("%-35s%-12s%20s",obj.getString("receiptID"), obj.getString("date"), obj.getString("totalCost"));
+    ArrayList<Receipt> loadReceiptObjToListviewByDaysAndCate(ArrayList<Receipt> _receipts, String daysSelect, String cateSelect){
+        ArrayList<Receipt> receipts = new ArrayList<Receipt>();
+        if(daysSelect.equals("All receipts") && cateSelect.equals("All categories")){
+            receipts = Information.receipts;
+        }else if(daysSelect.equals("All receipts") && !cateSelect.equals("All categories")){
+            receipts = DataController.getReceiptsInCategory(cateSelect);
+        }else if(!daysSelect.equals("All receipts") && cateSelect.equals("All categories")){
+            String daysNumString = daysSelect.replaceAll("\\D+","");
+            Integer daysNum = Integer.parseInt(daysNumString);
+            receipts = DataController.getReceiptsInDays(daysNum);
+        }else if(!daysSelect.equals("All receipts") && !cateSelect.equals("All categories")){
+            String daysNumString = daysSelect.replaceAll("\\D+","");
+            Integer daysNum = Integer.parseInt(daysNumString);
+            receipts = DataController.getReceiptsInDaysAndCategory(daysNum, cateSelect);
         }
-        ArrayAdapter<String> arrayAdapter = new ArrayAdapter<String>(getActivity(), android.R.layout.simple_list_item_1, receipts);
-        listView.setAdapter(arrayAdapter);
+
+        return receipts;
+
     }
 }
