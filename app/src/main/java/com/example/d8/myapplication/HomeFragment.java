@@ -2,12 +2,15 @@ package com.example.d8.myapplication;
 
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.Color;
+import android.graphics.drawable.GradientDrawable;
 import android.icu.text.IDNA;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
+import android.support.v7.app.AppCompatDelegate;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -17,6 +20,7 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.BaseAdapter;
 import android.widget.Button;
+import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.Spinner;
 import android.widget.SpinnerAdapter;
@@ -34,6 +38,8 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
+
+import static android.content.Context.MODE_PRIVATE;
 
 
 //The Home activity is implemented by the Home fragment, though to be honest this seems like redundant code.
@@ -58,10 +64,11 @@ public class HomeFragment extends Fragment implements View.OnClickListener {
     ListView listView=null;
     TextView receiptsTotalCost;
 
+    private LinearLayout bg;
 
     private String daysSpinnerSelect = "All receipts";
     private String cateSpinnerSelect = "All receipts";
-    ArrayList<Receipt> receiptsSelect = new ArrayList<Receipt>();
+    ArrayList<Receipt> receiptsSelect = Information.receipts;
 
 
     private OnFragmentInteractionListener mListener;
@@ -74,10 +81,6 @@ public class HomeFragment extends Fragment implements View.OnClickListener {
     @Override
     public void onClick(View v) {
         switch (v.getId()) {
-            case R.id.add_btn:
-                Intent goToAdd = new Intent(getActivity(), AddReceiptOptionActivity.class);
-                startActivity(goToAdd);
-                break;
             case R.id.analyze_btn:
                 Intent goToRec = new Intent(getActivity(), AnalyzeActivity.class);
                 startActivity(goToRec);
@@ -102,8 +105,6 @@ public class HomeFragment extends Fragment implements View.OnClickListener {
 
         super.onCreate(savedInstanceState);
 
-
-
         if (getArguments() != null) {
             mParam1 = getArguments().getString(ARG_PARAM1);
             mParam2 = getArguments().getString(ARG_PARAM2);
@@ -122,31 +123,22 @@ public class HomeFragment extends Fragment implements View.OnClickListener {
         View v=inflater.inflate(R.layout.fragment_home, container, false);
         fragmentView=v;
 
-//        listView = (ListView)v.findViewById(R.id.receipts_list_view);
 
         //Adds OnClick Listeners to the lower buttons
-        btn_add = (Button) v.findViewById(R.id.add_btn);
-        btn_add.setOnClickListener(this);
         btn_rec = (Button) v.findViewById(R.id.analyze_btn);
         btn_rec.setOnClickListener(this);
+        //li = (LinearLayout)v.findViewById(R.id.home_receipt_list_layout);
+        //li.setBackgroundColor(Color.rgb(99, 12, 11));
 
-        //getData("http://myvmlab.senecacollege.ca:6207/getUserReceipts.php");
-        //getJSON("http://myvmlab.senecacollege.ca:6207/getUserReceipts.php");
-        //DataController.SyncronizeData("http://myvmlab.senecacollege.ca:6207/getUserReceipts.php", this);
+        bg = getActivity().findViewById(R.id.lnb);
+        SharedPreferences colorBg  = getActivity().getSharedPreferences("Settings", MODE_PRIVATE);
+        int colourBg = colorBg.getInt("bg", 0);
 
+        if(colourBg != 0 && bg != null){
+            GradientDrawable backgroundGradient = (GradientDrawable)bg.getBackground();
+            backgroundGradient.setColors(new int[] {getResources().getColor(R.color.colorEceiptBlue),colourBg});
+        }
         initCustomSpinner();
-
-//        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-//            @Override
-//            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-//                //Toast.makeText(getActivity().getBaseContext(),""+position, Toast.LENGTH_LONG).show();
-//                Intent intent = new Intent(getActivity(),ReceiptDetailActivity.class);
-//                intent.putExtra("RECEIPTINDEX", Integer.toString(position));
-//                startActivity(intent);
-//            }
-//        });
-
-
         listView = (ListView)v.findViewById(R.id.receipts_list_view);
         receiptsTotalCost = (TextView)v.findViewById(R.id.total_cost) ;
 
@@ -172,12 +164,37 @@ public class HomeFragment extends Fragment implements View.OnClickListener {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 //Toast.makeText(getBaseContext(),""+position, Toast.LENGTH_LONG).show();
+                String receiptSelectId = receiptsSelect.get(position).getReceipId();
                 Intent intent = new Intent(v.getContext(),ReceiptDetailActivity.class);
-                intent.putExtra("RECEIPTINDEX", Integer.toString(position));
+                intent.putExtra("RECEIPTINDEX", receiptSelectId);
                 startActivity(intent);
             }
         });
 
+        try {
+            //Set main layout background
+            SharedPreferences settings = getActivity().getSharedPreferences("Settings", Context.MODE_PRIVATE);
+            int themeDayNight=settings.getInt("Theme_DayNight", AppCompatDelegate.MODE_NIGHT_NO);//Default day
+
+            int bc = settings.getInt("Background_Color", Color.CYAN);//Default white color
+            LinearLayout constrainLayout2=(LinearLayout)v.findViewById(R.id.home_list_layout);
+            if(themeDayNight== AppCompatDelegate.MODE_NIGHT_YES){
+                bc=Color.BLACK;
+                constrainLayout2.setBackgroundColor(bc);
+            }else {
+                constrainLayout2.setBackgroundColor(getResources().getColor(R.color.colorEceiptWhite));
+            }
+
+            LinearLayout constrainLayout=(LinearLayout)v.findViewById(R.id.main_layout);
+            GradientDrawable gd=(GradientDrawable)constrainLayout.getBackground();
+            gd.setColors(new int[]{getResources().getColor(R.color.colorEceiptBlue),bc});
+            constrainLayout.setBackground(gd);
+
+        }
+        catch(Exception ex)
+        {
+
+        }
         //Initialize categories to user
         Information.categories.clear();
         Information.categories.add("All categories");
@@ -194,12 +211,7 @@ public class HomeFragment extends Fragment implements View.OnClickListener {
                 }
             }
         }
-
         initCustomSpinner();
-
-        //test
-        //DataController.deleteLocalFile(getActivity());
-
         return v;
     }
 
@@ -213,6 +225,8 @@ public class HomeFragment extends Fragment implements View.OnClickListener {
     @Override
     public void onAttach(Context context) {
         super.onAttach(context);
+
+
         if (context instanceof OnFragmentInteractionListener) {
             mListener = (OnFragmentInteractionListener) context;
         } else {
@@ -258,7 +272,7 @@ public class HomeFragment extends Fragment implements View.OnClickListener {
                 Log.i("ITEMSAaaaaa", item);
                 double totalCost = 0.0;
 
-                ArrayList<Receipt> receiptsSelect = new ArrayList<Receipt>();
+                //ArrayList<Receipt> receiptsSelect = new ArrayList<Receipt>();
                 receiptsSelect = loadReceiptObjToListviewByDaysAndCate(Information.receipts,daysSpinnerSelect,cateSpinnerSelect);
                 loadReceiptObjToListView(receiptsSelect);
 //                if(item.equals("All receipts")){
@@ -315,7 +329,7 @@ public class HomeFragment extends Fragment implements View.OnClickListener {
                 cateSpinnerSelect = item;
 
                 double totalCost = 0.0;
-                ArrayList<Receipt> receiptsSelect = new ArrayList<Receipt>();
+                //ArrayList<Receipt> receiptsSelect = new ArrayList<Receipt>();
                 receiptsSelect = loadReceiptObjToListviewByDaysAndCate(Information.receipts,daysSpinnerSelect,cateSpinnerSelect);
                 loadReceiptObjToListView(receiptsSelect);
                 for(Receipt receipt:receiptsSelect){
@@ -365,7 +379,6 @@ public class HomeFragment extends Fragment implements View.OnClickListener {
             txt.setTextSize(18);
             txt.setGravity(Gravity.LEFT);
             txt.setText(asr.get(position));
-            txt.setTextColor(Color.parseColor("#000000"));
             return  txt;
         }
 
@@ -374,9 +387,7 @@ public class HomeFragment extends Fragment implements View.OnClickListener {
             txt.setGravity(Gravity.CENTER);
             txt.setPadding(16, 16, 16, 16);
             txt.setTextSize(16);
-            //txt.setCompoundDrawablesWithIntrinsicBounds(0, 0, R.drawable.ic_down, 0);
             txt.setText(asr.get(i));
-            txt.setTextColor(Color.parseColor("#000000"));
             return  txt;
         }
     }

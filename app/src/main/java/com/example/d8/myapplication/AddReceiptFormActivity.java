@@ -5,11 +5,13 @@ import android.app.DatePickerDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.icu.text.IDNA;
 import android.os.AsyncTask;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.app.AppCompatDelegate;
 import android.text.InputType;
 import android.text.TextUtils;
 import android.util.Log;
@@ -22,6 +24,7 @@ import android.widget.BaseAdapter;
 import android.widget.Button;
 import android.widget.DatePicker;
 import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.Spinner;
 import android.widget.SpinnerAdapter;
@@ -70,6 +73,7 @@ public class AddReceiptFormActivity extends AppCompatActivity {
     int mMonth;
     int mDay;
 
+    boolean ocrFlag = false;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -89,6 +93,7 @@ public class AddReceiptFormActivity extends AppCompatActivity {
         //This accepts an OCR scanned receipt and pre-loads it into the form.
         Receipt ocrScn = (Receipt)(getIntent().getSerializableExtra("ocrScan"));
       if(ocrScn != null) {
+          ocrFlag = true;
           for (int i = 0; i < ocrScn.getItems().size(); i++) {
 
               System.out.println(ocrScn.getItembyId(i).getItemName() + "--" + ocrScn.getItembyId(i).getItemPrice());
@@ -156,17 +161,19 @@ public class AddReceiptFormActivity extends AppCompatActivity {
                 newItems.add(item);
                 loadItemObjToListview(newItems);
 
-                double totalCostInDouble = 0.0;
-                for(int i=0; i<newItems.size(); i++){
-                    if(newItems.get(i).getItemPrice()==-1){
-                        totalCostInDouble+=0.00;
-                    }else{
-                        totalCostInDouble+=newItems.get(i).getItemPrice();
-                    }
+                if(!ocrFlag) {
+                    double totalCostInDouble = 0.0;
+                    for (int i = 0; i < newItems.size(); i++) {
+                        if (newItems.get(i).getItemPrice() == -1) {
+                            totalCostInDouble += 0.00;
+                        } else {
+                            totalCostInDouble += newItems.get(i).getItemPrice();
+                        }
 
+                    }
+                    String.format("%.2f", totalCostInDouble);
+                    totalCost.setText(String.format("%.2f", totalCostInDouble));
                 }
-                String.format("%.2f",totalCostInDouble);
-                totalCost.setText(String.format("%.2f",totalCostInDouble));
                 itemName.setText("");
                 itemPrice.setText("");
             }
@@ -195,13 +202,14 @@ public class AddReceiptFormActivity extends AppCompatActivity {
                                     }
 
                                 }
+                                if(!ocrFlag)
                                 totalCost.setText(Double.toString(totalCostInDouble));
 
                                 dialog.dismiss();
                             }
                         });
 
-                alertDialog.setButton(AlertDialog.BUTTON_NEUTRAL, "Cancle", new DialogInterface.OnClickListener() {
+                alertDialog.setButton(AlertDialog.BUTTON_NEUTRAL, "Cancel", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         dialog.cancel();
@@ -224,9 +232,9 @@ public class AddReceiptFormActivity extends AppCompatActivity {
 
                 //validate text input empty
                 if(company.equals("")){
-                    Toast.makeText(getApplicationContext(),"Please enter your name!",Toast.LENGTH_LONG).show();
+                    Toast.makeText(getApplicationContext(),"Please enter a Business Name",Toast.LENGTH_LONG).show();
                 }else if(tCost.equals("")){
-                    Toast.makeText(getApplicationContext(),"Please enter receipt's total cost!",Toast.LENGTH_LONG).show();
+                    Toast.makeText(getApplicationContext(),"Please enter the total cost!",Toast.LENGTH_LONG).show();
                 }else{
                     //all input are validated!
                     String receiptsJSON = DataController.readJsonFile(USERRECEIPTFILENAME, AddReceiptFormActivity.this);
@@ -304,6 +312,24 @@ public class AddReceiptFormActivity extends AppCompatActivity {
                 }
             }
         });
+
+        try {
+            //Set main layout background
+            SharedPreferences settings = getSharedPreferences("Settings", Context.MODE_PRIVATE);
+            int themeDayNight=settings.getInt("Theme_DayNight", AppCompatDelegate.MODE_NIGHT_NO);//Default day
+
+            LinearLayout li=(LinearLayout)findViewById(R.id.add_receipt_form_bg);
+            if(themeDayNight== AppCompatDelegate.MODE_NIGHT_YES){
+                li.setBackgroundColor(Color.BLACK);
+            }else {
+                li.setBackgroundColor(Color.WHITE);
+            }
+
+        }
+        catch(Exception ex)
+        {
+
+        }
 
     }
 
@@ -544,7 +570,6 @@ public class AddReceiptFormActivity extends AppCompatActivity {
             txt.setTextSize(18);
             txt.setGravity(Gravity.LEFT);
             txt.setText(asr.get(position));
-            txt.setTextColor(Color.parseColor("#000000"));
             return  txt;
         }
 
@@ -555,7 +580,6 @@ public class AddReceiptFormActivity extends AppCompatActivity {
             txt.setTextSize(16);
             //txt.setCompoundDrawablesWithIntrinsicBounds(0, 0, R.drawable.ic_down, 0);
             txt.setText(asr.get(i));
-            txt.setTextColor(Color.parseColor("#000000"));
             return  txt;
         }
     }

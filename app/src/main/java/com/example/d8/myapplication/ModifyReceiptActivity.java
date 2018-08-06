@@ -5,9 +5,11 @@ import android.app.DatePickerDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.app.AppCompatDelegate;
 import android.text.InputType;
 import android.util.Log;
 import android.view.Gravity;
@@ -19,6 +21,7 @@ import android.widget.BaseAdapter;
 import android.widget.Button;
 import android.widget.DatePicker;
 import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.Spinner;
 import android.widget.SpinnerAdapter;
@@ -45,6 +48,7 @@ public class ModifyReceiptActivity extends AppCompatActivity {
     ListView listView;
 
     ArrayList<String> resourceCate = new ArrayList<String>();
+//    ArrayList<Receipt.Item>receiptItems = new ArrayList<Receipt.Item>();
 
     String category = "No category";
     String temp = "";
@@ -66,7 +70,8 @@ public class ModifyReceiptActivity extends AppCompatActivity {
         String index = getIntent().getStringExtra("RECEIPTINDEX");
         Log.i("INDEX", index);
 
-        receipt  = Information.receipts.get(Integer.parseInt(index));
+        receipt  = DataController.getReceiptByIdThroughInfomationClass(index);
+
 
 
         companyName = (EditText)findViewById(R.id.company_name);
@@ -126,34 +131,53 @@ public class ModifyReceiptActivity extends AppCompatActivity {
             }
         });
 
+        listView.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
+            @Override
+            public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
+                AlertDialog alertDialog = new AlertDialog.Builder(ModifyReceiptActivity.this).create();
+                alertDialog.setTitle("Delete item");
+                alertDialog.setMessage("Do you want to delete this item?");
+                alertDialog.setButton(AlertDialog.BUTTON_POSITIVE, "OK",
+                        new DialogInterface.OnClickListener() {
+                            public void onClick(DialogInterface dialog, int which) {
+                                String itemId = receipt.getItems().get(position).getItemID();
+                                Log.i("ITEMREMOVEID", itemId);
+
+                                receipt.getItems().remove(position);
+                                loadItemObjToListview(receipt.getItems());
+
+                                double totalCostInDouble = 0.0;
+                                for(int i=0; i<receipt.getItems().size(); i++){
+                                    if(receipt.getItems().get(i).getItemPrice()==-1){
+                                        totalCostInDouble+=0.00;
+                                    }else{
+                                        totalCostInDouble+=receipt.getItems().get(i).getItemPrice();
+                                    }
+
+                                }
+                                totalCost.setText(Double.toString(totalCostInDouble));
+
+                                dialog.dismiss();
+                            }
+                        });
+
+                alertDialog.setButton(AlertDialog.BUTTON_NEUTRAL, "Cancle", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.cancel();
+                    }
+                });
+                alertDialog.show();
+
+                return true;
+            }
+        });
+
 
         updateItemBtn.setOnClickListener(new View.OnClickListener(){
             @Override
             public void onClick(View v) {
-//                if(itemIndex>=0) {
-//                    String itemname = itemName.getText().toString();
-//                    double itemprice = Double.parseDouble(itemPrice.getText().toString());
-//
-//                    Receipt.Item _item = receipt.getItems().get(itemIndex);
-//
-//                    _item.itemName = itemname;
-//                    _item.itemPrice = itemprice;
-//                    loadItemObjToListview(receipt.getItems());
-//
-//                    itemName.setText("");
-//                    itemPrice.setText("");
-//                    itemIndex = -1;
-//                }else
-//                {
-//                    //Update Total Cost
-//                    receipt.setTotalCost(receipt.getTotalCost()+itemprice);
-//
-//                    //Add item
-//                    _item=receipt.new Item();
-//                    _item.itemName = itemname;
-//                    _item.itemPrice = itemprice;
-//                    receipt.getItems().add(_item);
-//                }
+
                 try {
                     String itemname = itemName.getText().toString();
                     double itemprice = Double.parseDouble(itemPrice.getText().toString());
@@ -209,9 +233,9 @@ public class ModifyReceiptActivity extends AppCompatActivity {
 
                 //validate text input empty
                 if(company.equals("")){
-                    Toast.makeText(getApplicationContext(),"Please enter your name!",Toast.LENGTH_LONG).show();
+                    Toast.makeText(getApplicationContext(),"Please enter a Business name",Toast.LENGTH_LONG).show();
                 }else if(tCost.equals("")){
-                    Toast.makeText(getApplicationContext(),"Please enter receipt's total cost!",Toast.LENGTH_LONG).show();
+                    Toast.makeText(getApplicationContext(),"Please enter the total cost",Toast.LENGTH_LONG).show();
                 }else{
                     //all input are validated!
                     try{
@@ -257,6 +281,24 @@ public class ModifyReceiptActivity extends AppCompatActivity {
         });
 
         initCustomSpinner();
+
+        try {
+            //Set main layout background
+            SharedPreferences settings = getSharedPreferences("Settings", Context.MODE_PRIVATE);
+            int themeDayNight=settings.getInt("Theme_DayNight", AppCompatDelegate.MODE_NIGHT_NO);//Default day
+
+            LinearLayout li=(LinearLayout)findViewById(R.id.modify_body);
+            if(themeDayNight== AppCompatDelegate.MODE_NIGHT_YES){
+                li.setBackgroundColor(Color.BLACK);
+            }else {
+                li.setBackgroundColor(Color.WHITE);
+            }
+
+        }
+        catch(Exception ex)
+        {
+
+        }
 
     }
 
@@ -414,7 +456,6 @@ public class ModifyReceiptActivity extends AppCompatActivity {
             txt.setTextSize(18);
             txt.setGravity(Gravity.LEFT);
             txt.setText(asr.get(position));
-            txt.setTextColor(Color.parseColor("#000000"));
             return  txt;
         }
 
@@ -423,9 +464,7 @@ public class ModifyReceiptActivity extends AppCompatActivity {
             txt.setGravity(Gravity.CENTER);
             txt.setPadding(16, 16, 16, 16);
             txt.setTextSize(16);
-            //txt.setCompoundDrawablesWithIntrinsicBounds(0, 0, R.drawable.ic_down, 0);
             txt.setText(asr.get(i));
-            txt.setTextColor(Color.parseColor("#000000"));
             return  txt;
         }
     }

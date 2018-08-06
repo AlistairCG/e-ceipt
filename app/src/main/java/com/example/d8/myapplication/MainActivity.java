@@ -3,6 +3,7 @@ package com.example.d8.myapplication;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Color;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.LayerDrawable;
@@ -13,6 +14,7 @@ import android.support.v4.content.ContextCompat;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.app.AppCompatDelegate;
 import android.text.Layout;
 import android.text.TextUtils;
 import android.transition.TransitionManager;
@@ -92,15 +94,38 @@ public class MainActivity extends AppCompatActivity {
 
         pb = findViewById(R.id.pb3);
         bg = findViewById(R.id.cln);
+
         GradientDrawable backgroundGradient = (GradientDrawable)bg.getBackground();
-        backgroundGradient.setColors(new int[] {getResources().getColor(R.color.colorEceiptDeepRed),getResources().getColor(R.color.colorEceiptOrange) });
 
 
+        try {
+            //Set Day-Night theme
+            SharedPreferences settings = getSharedPreferences("Settings", Context.MODE_PRIVATE);
+            int themeDayNight=settings.getInt("Theme_DayNight", AppCompatDelegate.MODE_NIGHT_NO);//Default day
+            AppCompatDelegate.setDefaultNightMode(themeDayNight);
+
+            //Set window's background color from saved settings.
+            int bc = settings.getInt("Background_Color", Color.CYAN);//Default white color
+            if(themeDayNight==AppCompatDelegate.MODE_NIGHT_YES){
+                bc=getResources().getColor(R.color.colorEceiptDarkGrey);
+                ConstraintLayout constrainLayout=(ConstraintLayout)findViewById(R.id.cln);
+                GradientDrawable gd=(GradientDrawable)constrainLayout.getBackground();
+                gd.setColors(new int[]{getResources().getColor(R.color.colorEceiptBlue),bc});
+                constrainLayout.setBackground(gd);
+            }
+
+
+        }
+        catch(Exception ex)
+        {
+
+        }
 
         if (!isTaskRoot()) {
             finish();
             return;
         }
+
 
         mAuth = FirebaseAuth.getInstance();
 
@@ -138,6 +163,13 @@ public class MainActivity extends AppCompatActivity {
         if(!remember.isEmpty()){
             userET.setText(remember);
         }
+
+//        SharedPreferences colorBg  = getSharedPreferences("Settings", MODE_PRIVATE);
+//        int colourBg = colorBg.getInt("bg", 0);
+//        if(colourBg != 0){
+//            GradientDrawable backgroundGradient = (GradientDrawable)bg.getBackground();
+//            backgroundGradient.setColors(new int[] getResources().getColor(R.color.colorEceiptBlue),colourBg}{);
+//        }
 
         if (savedInstanceState != null) {
             onRestoreInstanceState(savedInstanceState);
@@ -203,6 +235,7 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
+
     private void signInWithPhoneAuthCredential(PhoneAuthCredential credential) {
         aUser.mAuth.signInWithCredential(credential)
                 .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
@@ -251,13 +284,14 @@ public class MainActivity extends AppCompatActivity {
     }
 
     //The initial function after onCreate()
+    //This checks for previously logged in users with valid sessions and logs them in.
+
     @Override
     public void onStart() {
         super.onStart();
         // Check if user is signed in
         FirebaseUser currentUser = mAuth.getCurrentUser();
-
-        if(currentUser != null){
+        if(currentUser != null && currentUser.isEmailVerified() ){
             aUser.createUser();
             Information.authUser = aUser;
             if(!aUser.isPhone()) {
@@ -265,6 +299,13 @@ public class MainActivity extends AppCompatActivity {
                 SharedPreferences sharedPref = this.getPreferences(Context.MODE_PRIVATE);
                 SharedPreferences.Editor editor = sharedPref.edit();
                 editor.putString("pref_username", aUser.getEmail());
+                editor.apply();
+
+            }else{
+                //Clears the Pref
+                SharedPreferences sharedPref = this.getPreferences(Context.MODE_PRIVATE);
+                SharedPreferences.Editor editor = sharedPref.edit();
+                editor.putString("pref_username","");
                 editor.apply();
 
             }
@@ -279,8 +320,6 @@ public class MainActivity extends AppCompatActivity {
 
 
         }
-       // FirebaseAuth.getInstance().signOut();
-       // aUser.mGoogleSignInClient.signOut();
 
         if (mVerificationInProgress && validatePhoneNumber()) {
             startPhoneNumberVerification(phoneET.getText().toString());
@@ -292,8 +331,6 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public void onDestroy(){
         super.onDestroy();
-        FirebaseAuth.getInstance().signOut();
-        aUser.mGoogleSignInClient.signOut();
 
     }
 
@@ -319,6 +356,7 @@ public class MainActivity extends AppCompatActivity {
             ltnVisFlag = true;
         }else{
             ltn.setVisibility(View.GONE);
+
             ltnVisFlag = false;
         }
 
@@ -329,7 +367,12 @@ public class MainActivity extends AppCompatActivity {
         if (!validatePhoneNumber()) {
             return;
         }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            TransitionManager.beginDelayedTransition(bg);
+        }
         btnCode.setVisibility(View.VISIBLE);
+        codeET.setVisibility(View.VISIBLE);
+
         String t = phoneET.getText().toString();
         t = "+"+t;
         startPhoneNumberVerification(t);
